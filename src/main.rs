@@ -14,12 +14,24 @@ use crate::ray::Ray;
 use crate::sphere::{Sphere, MaterialType, EPSILON_SPHERE};
 use crate::specular::{ideal_specular_reflect, ideal_specular_transmit};
 use crate::sampling::cosine_weighted_sample_on_hemisphere;
+use std::sync::{Arc, Mutex};
+use rayon::prelude::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
 
+/*
+let width = 1024;
+let texture: Vec<f32> = Vec::new();
+texture.par_chunks(width).enumerate().for_each(|(y, rowTextureData)|  {
+    for x in 0..width {
+        rowTextureData[x] = 1337_f32;
+    }
+});
+ */
 
 const WIDTH: usize = 512;
 const HEIGHT: usize = 512;
 const TEXTURE_SIZE: usize = WIDTH * HEIGHT;
-const SAMPLE: usize = 256;
+const SAMPLE: usize = 512;
 
 const FOV: f32 = 0.5135;
 const REFRACTIVE_INDEX_OUT: f32 = 1.0;
@@ -37,20 +49,20 @@ fn main() {
     let cx = Vec3::new((FOV * (WIDTH as f32)) / (HEIGHT as f32), 0.0, 0.0);
     let cy = cx.cross(gaze).normalized() * FOV;
 
-    let mut texture = std::vec![Vec3::zero(); TEXTURE_SIZE];
+    let mut texture = Arc::new(Mutex::new(std::vec![Vec3::zero(); TEXTURE_SIZE]));
     let mut sphere_list: Vec<Sphere> = Vec::new();
 
-/*    for i in 0..10 {
-        sphere_list.push(sphere::Sphere {
-            position: Vec3 { x: 50.0, y: 23.0 + i as f32 * 4.0, z: 81.0 },
-            radius: 1.0,
-            emission: Vec3 { x: 30.0, y: 30.0, z: 30.0 },
-            color: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
-            material: MaterialType::Diffuse,
-        });
+    /*    for i in 0..10 {
+            sphere_list.push(sphere::Sphere {
+                position: Vec3 { x: 50.0, y: 23.0 + i as f32 * 4.0, z: 81.0 },
+                radius: 1.0,
+                emission: Vec3 { x: 30.0, y: 30.0, z: 30.0 },
+                color: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
+                material: MaterialType::Diffuse,
+            });
 
-    }
-*/
+        }
+    */
 
     //LIGHT
     sphere_list.push(sphere::Sphere {
@@ -147,12 +159,13 @@ fn main() {
     });
 
 
-    for i in 0..HEIGHT {
-        render(i, WIDTH, HEIGHT, SAMPLE, eye, gaze, cx, cy, &mut texture, &sphere_list);
-    }
-//        (0..HEIGHT).into_par_iter().for_each(|i| render(i, WIDTH, HEIGHT, SAMPLE, eye, gaze, cx, cy, &mut texture, &spherelist));
+    // for i in 0..HEIGHT {
+    //     render(i, WIDTH, HEIGHT, SAMPLE, eye, gaze, cx, cy, &mut texture, &sphere_list);
+    // }
+    (0..HEIGHT).into_par_iter().for_each(|i| render(i, WIDTH, HEIGHT, SAMPLE, eye, gaze, cx, cy, Arc::clone(&texture), &sphere_list));
 
     let mut buffer: [u8;WIDTH*HEIGHT*3] = [0 as u8;WIDTH*HEIGHT*3];
+    let texture = texture.lock().unwrap();
     for i in 0..texture.len() {
         buffer[i*3] = (texture[i].x.powf(1.0/2.2) * 255.0).clamp(0.0,255.0) as u8;
         buffer[i*3+1] = (texture[i].y.powf(1.0/2.2) * 255.0).clamp(0.0,255.0) as u8;
@@ -163,7 +176,7 @@ fn main() {
     println!("Render time : {}s", now.elapsed().as_secs())
 }
 
-fn render(column: usize, width: usize, height: usize, nbsample: usize, eye: Vec3, gaze: Vec3, cx: Vec3, cy: Vec3, texture: &mut Vec<Vec3>, sph: &Vec<Sphere>) {
+fn render(column: usize, width: usize, height: usize, nbsample: usize, eye: Vec3, gaze: Vec3, cx: Vec3, cy: Vec3, texture: Arc<Mutex<Vec<Vec3>>>, sph: &Vec<Sphere>) {
 
     let mut rng = rand::thread_rng();
     let mut luminance: Vec3;
@@ -195,6 +208,7 @@ fn render(column: usize, width: usize, height: usize, nbsample: usize, eye: Vec3
                         depth: 0,
                     }, &sph) * (1f32 / nbsample as f32);
                 }
+                let mut texture = texture.lock().unwrap();
                 texture[i] += 0.25 * luminance.clamped(Vec3 { x: 0f32, y: 0f32, z: 0f32 }, Vec3 { x: 1f32, y: 1f32, z: 1f32 });
                 subpixelrow += 1;
             }
