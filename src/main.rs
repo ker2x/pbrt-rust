@@ -7,7 +7,7 @@ use std::time::{Instant};
 use chrono;
 use ultraviolet::Vec3;
 use rand::Rng;
-use image::{GenericImage, GenericImageView, ImageBuffer, RgbImage};
+use image;
 //use rayon::prelude::*;
 
 use crate::ray::Ray;
@@ -19,7 +19,7 @@ use crate::sampling::cosine_weighted_sample_on_hemisphere;
 const WIDTH: usize = 512;
 const HEIGHT: usize = 512;
 const TEXTURE_SIZE: usize = WIDTH * HEIGHT;
-const SAMPLE: usize = 32;
+const SAMPLE: usize = 256;
 
 const FOV: f32 = 0.5135;
 const REFRACTIVE_INDEX_OUT: f32 = 1.0;
@@ -38,10 +38,10 @@ fn main() {
     let cy = cx.cross(gaze).normalized() * FOV;
 
     let mut texture = std::vec![Vec3::zero(); TEXTURE_SIZE];
-    let mut spherelist: Vec<Sphere> = Vec::new();
+    let mut sphere_list: Vec<Sphere> = Vec::new();
 
     //LIGHT
-    spherelist.push(sphere::Sphere {
+    sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 50.0, y: -3.0, z: 81.0 },
         radius: 6.5,
         emission: Vec3 { x: 30.0, y: 30.0, z: 30.0 },
@@ -50,7 +50,7 @@ fn main() {
     });
 
     //LEFT
-    spherelist.push(sphere::Sphere {
+    sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 1e3 + 1.0, y: 40.8, z: 81.6 },
         radius: 1e3,
         emission: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
@@ -59,7 +59,7 @@ fn main() {
     });
 
     //RIGHT
-    spherelist.push(sphere::Sphere {
+    sphere_list.push(sphere::Sphere {
         position: Vec3 { x: -1e3 + 99.0, y: 40.8, z: 81.6 },
         radius: 1e3,
         emission: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
@@ -68,7 +68,7 @@ fn main() {
     });
 
     //BACK
-    spherelist.push(sphere::Sphere {
+    sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 50.0, y: 40.8, z: 1e3 },
         radius: 1e3,
         emission: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
@@ -77,7 +77,7 @@ fn main() {
     });
 
     //FRONT
-    spherelist.push(sphere::Sphere {
+    sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 50.0, y: 40.8, z: -1e3 + 170.0},
         radius: 1e3,
         emission: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
@@ -86,7 +86,7 @@ fn main() {
     });
 
     //BOTTOM
-    spherelist.push(sphere::Sphere {
+    sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 50.0, y: 1e3, z: 81.6},
         radius: 1e3,
         emission: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
@@ -95,7 +95,7 @@ fn main() {
     });
 
     //TOP
-    spherelist.push(sphere::Sphere {
+    sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 50.0, y: -1e3 + 81.6, z: 81.6},
         radius: 1e3,
         emission: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
@@ -104,7 +104,7 @@ fn main() {
     });
 
     //MIRROR
-    spherelist.push(sphere::Sphere {
+    sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 27.0, y: 16.5, z: 47.0},
         radius: 16.5,
         emission: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
@@ -113,7 +113,7 @@ fn main() {
     });
 
     //BLUE GLASS
-    spherelist.push(sphere::Sphere {
+    sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 50.0, y: 12.5, z: 81.0},
         radius: 6.5,
         emission: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
@@ -121,9 +121,8 @@ fn main() {
         material: MaterialType::Refractive,
     });
 
-
     //GLASS
-    spherelist.push(sphere::Sphere {
+    sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 73.0, y: 16.5, z: 78.0},
         radius: 16.5,
         emission: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
@@ -133,22 +132,22 @@ fn main() {
 
 
     for i in 0..HEIGHT {
-        renderfunc(i, WIDTH, HEIGHT, SAMPLE, eye, gaze, cx, cy, &mut texture, &spherelist);
+        render(i, WIDTH, HEIGHT, SAMPLE, eye, gaze, cx, cy, &mut texture, &sphere_list);
     }
-//        (0..HEIGHT).into_par_iter().for_each(|i| renderfunc(i, WIDTH, HEIGHT, SAMPLE, eye, gaze, cx, cy, &mut texture, &spherelist));
+//        (0..HEIGHT).into_par_iter().for_each(|i| render(i, WIDTH, HEIGHT, SAMPLE, eye, gaze, cx, cy, &mut texture, &spherelist));
 
     let mut buffer: [u8;WIDTH*HEIGHT*3] = [0 as u8;WIDTH*HEIGHT*3];
     for i in 0..texture.len() {
         buffer[i*3] = (texture[i].x.powf(1.0/2.2) * 255.0).clamp(0.0,255.0) as u8;
-        buffer[i*3+1] = (texture[i].y.powf(1.0/2.2) * 255.0).clamp(0.0,255.0) as u8;;
-        buffer[i*3+2] = (texture[i].z.powf(1.0/2.2) * 255.0).clamp(0.0,255.0) as u8;;
+        buffer[i*3+1] = (texture[i].y.powf(1.0/2.2) * 255.0).clamp(0.0,255.0) as u8;
+        buffer[i*3+2] = (texture[i].z.powf(1.0/2.2) * 255.0).clamp(0.0,255.0) as u8;
     }
     image::save_buffer("image.png", &buffer, WIDTH as u32, HEIGHT as u32, image::ColorType::Rgb8).unwrap();
 
-    println!("{}", now.elapsed().as_secs())
+    println!("Render time : {}s", now.elapsed().as_secs())
 }
 
-fn renderfunc(column: usize, width: usize, height: usize, nbsample: usize, eye: Vec3, gaze: Vec3, cx: Vec3, cy: Vec3, texture: &mut Vec<Vec3>, sph: &Vec<Sphere>) {
+fn render(column: usize, width: usize, height: usize, nbsample: usize, eye: Vec3, gaze: Vec3, cx: Vec3, cy: Vec3, texture: &mut Vec<Vec3>, sph: &Vec<Sphere>) {
 
     let mut rng = rand::thread_rng();
     let mut luminance: Vec3;
