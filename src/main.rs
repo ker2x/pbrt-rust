@@ -31,7 +31,7 @@ texture.par_chunks(width).enumerate().for_each(|(y, rowTextureData)|  {
 const WIDTH: usize = 512;
 const HEIGHT: usize = 512;
 const TEXTURE_SIZE: usize = WIDTH * HEIGHT;
-const SAMPLE: usize = 512;
+const SAMPLE: usize = 2048;
 
 const FOV: f32 = 0.5135;
 const REFRACTIVE_INDEX_OUT: f32 = 1.0;
@@ -49,7 +49,7 @@ fn main() {
     let cx = Vec3::new((FOV * (WIDTH as f32)) / (HEIGHT as f32), 0.0, 0.0);
     let cy = cx.cross(gaze).normalized() * FOV;
 
-    let mut texture = Arc::new(Mutex::new(std::vec![Vec3::zero(); TEXTURE_SIZE]));
+    let texture = Arc::new(Mutex::new(std::vec![Vec3::zero(); TEXTURE_SIZE]));
     let mut sphere_list: Vec<Sphere> = Vec::new();
 
     /*    for i in 0..10 {
@@ -162,7 +162,7 @@ fn main() {
     // for i in 0..HEIGHT {
     //     render(i, WIDTH, HEIGHT, SAMPLE, eye, gaze, cx, cy, &mut texture, &sphere_list);
     // }
-    (0..HEIGHT).into_par_iter().for_each(|i| render(i, WIDTH, HEIGHT, SAMPLE, eye, gaze, cx, cy, Arc::clone(&texture), &sphere_list));
+    (0..HEIGHT).into_par_iter().for_each(|i| render(i, WIDTH, HEIGHT, eye, gaze, cx, cy, Arc::clone(&texture), &sphere_list));
 
     let mut buffer: [u8;WIDTH*HEIGHT*3] = [0 as u8;WIDTH*HEIGHT*3];
     let texture = texture.lock().unwrap();
@@ -176,44 +176,34 @@ fn main() {
     println!("Render time : {}s", now.elapsed().as_secs())
 }
 
-fn render(column: usize, width: usize, height: usize, nbsample: usize, eye: Vec3, gaze: Vec3, cx: Vec3, cy: Vec3, texture: Arc<Mutex<Vec<Vec3>>>, sph: &Vec<Sphere>) {
+fn render(column: usize, width: usize, height: usize, eye: Vec3, gaze: Vec3, cx: Vec3, cy: Vec3, texture: Arc<Mutex<Vec<Vec3>>>, sph: &Vec<Sphere>) {
 
     let mut rng = rand::thread_rng();
+    let mut rngbuff = [0f32;SAMPLE*2];
     let mut luminance: Vec3;
 
     for rowindex in 0..width {
 
-        let mut columnindex = 0;
         let i = (height - 1 - column) * width + rowindex;
+        luminance = Vec3::zero();
+        rng.fill(&mut rngbuff);
 
-        while columnindex < 2 {
-            let mut subpixelrow = 0;
+        for s in 0..SAMPLE {
+            let dx = (2f32 * rngbuff[s*2]) - 1.0;
+            let dy = (2f32 * rngbuff[s*2+1]) - 1.0;
+            let d :Vec3 =  cx * ((dx + rowindex as f32) / width  as f32 - 0.5) +
+                           cy * ((dy + column as f32)   / height as f32 - 0.5) + gaze;
 
-            while subpixelrow < 2 {
-                luminance = Vec3::zero();
-
-                for _ in 0..nbsample {
-                    let u1 = 2f32 * rng.gen::<f32>();
-                    let u2 = 2f32 * rng.gen::<f32>();
-                    let dx = if u1 < 1.0 { u1.sqrt() - 1.0 } else { 1.0 - (2.0 - u1).sqrt() };
-                    let dy = if u2 < 1.0 { u2.sqrt() - 1.0 } else { 1.0 - (2.0 - u2).sqrt() };
-                    let d = cx * (((subpixelrow as f32 + 0.5 + dx) / 2f32 + rowindex as f32) / width as f32 - 0.5) +
-                        cy * (((columnindex as f32 + 0.5 + dy) / 2f32 + column as f32) / height as f32 - 0.5) + gaze;
-
-                    luminance += radiance(&mut Ray {
-                        origin: eye + d * 130f32,
-                        direction: d.normalized(),
-                        tmin: EPSILON_SPHERE,
-                        tmax: f32::INFINITY,
-                        depth: 0,
-                    }, &sph) * (1f32 / nbsample as f32);
-                }
-                let mut texture = texture.lock().unwrap();
-                texture[i] += 0.25 * luminance.clamped(Vec3 { x: 0f32, y: 0f32, z: 0f32 }, Vec3 { x: 1f32, y: 1f32, z: 1f32 });
-                subpixelrow += 1;
-            }
-            columnindex += 1;
+            luminance += radiance(&mut Ray {
+                origin: eye + d * 130f32,
+                direction: d.normalized(),
+                tmin: EPSILON_SPHERE,
+                tmax: f32::INFINITY,
+                depth: 0,
+            }, &sph) * (1f32 / SAMPLE as f32);
         }
+        let mut texture = texture.lock().unwrap();
+        texture[i] += luminance.clamped(Vec3 { x: 0f32, y: 0f32, z: 0f32 }, Vec3 { x: 1f32, y: 1f32, z: 1f32 });
     }
 }
 
