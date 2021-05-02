@@ -25,11 +25,11 @@ const FOV: f32 = 0.5135;
 const REFRACTIVE_INDEX_OUT: f32 = 1.0;
 const REFRACTIVE_INDEX_IN: f32 = 1.5;
 const MIN_BOUNCE: usize = 5;
-const MAX_BOUNCE: usize = 30;
+const MAX_BOUNCE: usize = 10;
 
 
 fn main() {
-    let now = Instant::now();   //     println!("{}", now.elapsed().as_secs());
+    let now = Instant::now();
     println!("Starting, at {}", chrono::offset::Local::now());
 
     let eye = Vec3::new(50.0, 52.0, 295.6);
@@ -39,6 +39,18 @@ fn main() {
 
     let mut texture = std::vec![Vec3::zero(); TEXTURE_SIZE];
     let mut sphere_list: Vec<Sphere> = Vec::new();
+
+/*    for i in 0..10 {
+        sphere_list.push(sphere::Sphere {
+            position: Vec3 { x: 50.0, y: 23.0 + i as f32 * 4.0, z: 81.0 },
+            radius: 1.0,
+            emission: Vec3 { x: 30.0, y: 30.0, z: 30.0 },
+            color: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
+            material: MaterialType::Diffuse,
+        });
+
+    }
+*/
 
     //LIGHT
     sphere_list.push(sphere::Sphere {
@@ -68,6 +80,7 @@ fn main() {
     });
 
     //BACK
+
     sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 50.0, y: 40.8, z: 1e3 },
         radius: 1e3,
@@ -77,6 +90,7 @@ fn main() {
     });
 
     //FRONT
+    /*
     sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 50.0, y: 40.8, z: -1e3 + 170.0},
         radius: 1e3,
@@ -84,6 +98,8 @@ fn main() {
         color: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
         material: MaterialType::Diffuse,
     });
+
+     */
 
     //BOTTOM
     sphere_list.push(sphere::Sphere {
@@ -187,26 +203,20 @@ fn render(column: usize, width: usize, height: usize, nbsample: usize, eye: Vec3
     }
 }
 
-fn intersect(ray: &mut Ray, id: &mut usize, sphere: &Vec<Sphere>) -> bool {
-    *id = 0;
+fn intersect(ray: &mut Ray, sphere: &Vec<Sphere>) -> (usize,bool) {
+    let mut id :usize = 0;
     let mut hit = false;
-/*
-    let o = sphere.iter().position(|sphere| sphere.intersect(ray));
-    if let Some(pos) = o {
-        *id = pos;
-        hit = true
-    }
- */
+
     for i in 0..sphere.len() {
         if sphere[i].intersect(ray) == false {
             continue;
         } else {
             hit = true;
-            *id = i;
+            id = i;
         }
     }
+    return (id, hit);
 
-    return hit;
 }
 
 fn radiance(ray: &mut Ray, sphere: &Vec<Sphere>) -> Vec3 {
@@ -214,10 +224,10 @@ fn radiance(ray: &mut Ray, sphere: &Vec<Sphere>) -> Vec3 {
     let mut rng = rand::thread_rng();
     let mut luminance: Vec3 = Vec3::zero();
     let mut color: Vec3 = Vec3::one();
-    let mut id: usize = 0;
 
     loop {
-        if intersect(ray, &mut id, sphere) == false {
+        let (id, hit) = intersect(ray, sphere);
+        if  hit == false {
             return luminance;
         }
 
