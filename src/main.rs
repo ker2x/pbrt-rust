@@ -28,8 +28,8 @@ texture.par_chunks(width).enumerate().for_each(|(y, rowTextureData)|  {
 });
  */
 
-const WIDTH: usize = 1024*2;
-const HEIGHT: usize = 1024*2;
+const WIDTH: usize = 1600;
+const HEIGHT: usize = 1600;
 const TEXTURE_SIZE: usize = WIDTH * HEIGHT;
 
 const SAMPLE: usize = 128;     //the most important for quality
