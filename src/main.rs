@@ -28,11 +28,11 @@ texture.par_chunks(width).enumerate().for_each(|(y, rowTextureData)|  {
 });
  */
 
-const WIDTH: usize = 1600;
-const HEIGHT: usize = 1600;
+const WIDTH: usize = 512;
+const HEIGHT: usize = 512;
 const TEXTURE_SIZE: usize = WIDTH * HEIGHT;
 
-const SAMPLE: usize = 128;     //the most important for quality
+const SAMPLE: usize = 512;     //the most important for quality
 
 const MIN_BOUNCE: usize = 3;   //can have a major impact on perf.
 const MAX_BOUNCE: usize = 10;  //that too, but minor compared to MIN
@@ -184,7 +184,7 @@ fn main() {
 
     (0..HEIGHT).into_par_iter().for_each(|i| render(i, eye, gaze, cx, cy, Arc::clone(&texture), &sphere_list));
 
-    let mut buffer: [u8;WIDTH*HEIGHT*3] = [0 as u8;WIDTH*HEIGHT*3];
+    let mut buffer= vec![0 as u8;WIDTH*HEIGHT*3];
     let texture = texture.lock().unwrap();
     for i in 0..texture.len() {
         buffer[i*3] = (texture[i].x.powf(1.0/GAMMA) * 255.0).clamp(0.0,255.0) as u8;
