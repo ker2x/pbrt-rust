@@ -28,20 +28,43 @@ texture.par_chunks(width).enumerate().for_each(|(y, rowTextureData)|  {
 });
  */
 
-const WIDTH: usize = 512;
-const HEIGHT: usize = 512;
+/*
+test : 1600x1200, 16SPP, 3/20 Bounce    : 5s/5s
+test : 1600x1200, 32SPP, 3/20 Bounce    : 10s/11s
+test : 1600x1200, 64SPP, 3/20 Bounce    : 20s/22s
+test : 1600x1200, 128SPP, 3/20 Bounce   : 47s/46s/45s/42s
+test : 1600x1200, 256SPP, 3/20 Bounce   : 91s/94s
+test : 1600x1200, 512SPP, 3/20 Bounce   : 196s
+test : 1600x1200, 1024SPP, 3/20 Bounce  : 373s
+test : 1600x1200, 2048SPP, 3/20 Bounce  : 762s
+test : 1600x1200, 4096SPP, 3/20 Bounce  : 1541s
+test : 1600x1200, 8192SPP, 3/20 Bounce  : 3191s
+
+
+
+test : 1600x1200, 128SPP, 3/20 Bounce   : 47s/46s/45s/42s
+test : 1600x1200, 128SPP, 3/200 Bounce  : 53s/49s/46s/47s/49s
+test : 1600x1200, 128SPP, 3/2000 Bounce : 58s/58s/64s/59s
+
+test : 1600x1200, 128SPP, 30/200 Bounce : 226s
+
+
+ */
+
+const WIDTH: usize = 1600;
+const HEIGHT: usize = 1200;
 const TEXTURE_SIZE: usize = WIDTH * HEIGHT;
 
-const SAMPLE: usize = 512;     //the most important for quality
+const SAMPLE: usize = 128;     //the most important for quality
 
 const MIN_BOUNCE: usize = 3;   //can have a major impact on perf.
-const MAX_BOUNCE: usize = 10;  //that too, but minor compared to MIN
+const MAX_BOUNCE: usize = 20;  //that too, but minor compared to MIN
 
 const FOV: f32 = 0.5135;
 const REFRACTIVE_INDEX_OUT: f32 = 1.0;
 const REFRACTIVE_INDEX_IN: f32 = 1.5;
 
-const GAMMA: f32 = 2.2;
+//const GAMMA: f32 = 3.2;
 
 fn main() {
     let now = Instant::now();
@@ -71,12 +94,12 @@ fn main() {
     sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 50.0, y: -3.0, z: 81.0 },
         radius: 6.5,
-        emission: Vec3 { x: 20.0, y: 20.0, z: 25.0 },
+        emission: Vec3 { x: 40.0, y: 30.0, z: 30.0 },
         color: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
         material: MaterialType::Diffuse,
     });
 
-
+/*
     //LIGHT top
     sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 50.0, y: 80.0, z: 81.0 },
@@ -85,6 +108,8 @@ fn main() {
         color: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
         material: MaterialType::Diffuse,
     });
+
+ */
 
     //LEFT
     sphere_list.push(sphere::Sphere {
@@ -120,7 +145,7 @@ fn main() {
         position: Vec3 { x: 50.0, y: 40.8, z: -1e3 + 170.0},
         radius: 1e3,
         emission: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
-        color: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
+        color: Vec3 { x: 0.3, y: 0.3, z: 0.05 },
         material: MaterialType::Diffuse,
     });
 
@@ -153,23 +178,23 @@ fn main() {
         material: MaterialType::Specular,
     });
 
-    //BLUE GLASS
+    //BLUE mirror
     sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 50.0, y: 42.5, z: 81.0},
         radius: 12.5,
         emission: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
         color: Vec3 { x: 0.5, y: 0.5, z: 0.999 },
-        material: MaterialType::Refractive,
+        material: MaterialType::Specular,
     });
 
 
-    //mirror light
+    //glass light
     sphere_list.push(sphere::Sphere {
         position: Vec3 { x: 50.0, y: 14.5, z: 81.0},
         radius: 6.5,
         emission: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
         color: Vec3 { x: 0.999, y: 0.999, z: 0.999 },
-        material: MaterialType::Specular,
+        material: MaterialType::Refractive,
     });
 
     //GLASS
@@ -187,9 +212,12 @@ fn main() {
     let mut buffer= vec![0 as u8;WIDTH*HEIGHT*3];
     let texture = texture.lock().unwrap();
     for i in 0..texture.len() {
-        buffer[i*3] = (texture[i].x.powf(1.0/GAMMA) * 255.0).clamp(0.0,255.0) as u8;
-        buffer[i*3+1] = (texture[i].y.powf(1.0/GAMMA) * 255.0).clamp(0.0,255.0) as u8;
-        buffer[i*3+2] = (texture[i].z.powf(1.0/GAMMA) * 255.0).clamp(0.0,255.0) as u8;
+        //buffer[i*3] = (texture[i].x.powf(1.0/GAMMA) * 255.0).clamp(0.0,255.0) as u8;
+        //buffer[i*3+1] = (texture[i].y.powf(1.0/GAMMA) * 255.0).clamp(0.0,255.0) as u8;
+        //buffer[i*3+2] = (texture[i].z.powf(1.0/GAMMA) * 255.0).clamp(0.0,255.0) as u8;
+        buffer[i*3] = fast_srgb8::f32_to_srgb8(texture[i].x);
+        buffer[i*3+1] = fast_srgb8::f32_to_srgb8(texture[i].y);
+        buffer[i*3+2] = fast_srgb8::f32_to_srgb8(texture[i].z);
     }
     image::save_buffer("image.png", &buffer, WIDTH as u32, HEIGHT as u32, image::ColorType::Rgb8).unwrap();
 

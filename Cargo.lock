@@ -132,6 +132,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
+name = "fast-srgb8"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9249e811cc311111895d00ae0134d857490912992192ed2730d423e91c3fa12d"
+
+[[package]]
 name = "getrandom"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -285,6 +291,7 @@ name = "pbrt"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "fast-srgb8",
  "image",
  "rand",
  "rayon",
