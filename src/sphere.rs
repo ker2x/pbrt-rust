@@ -1,7 +1,7 @@
-use ultraviolet::Vec3;
-use std::fmt;
-use std::fmt::{Formatter};
 use crate::ray::Ray;
+use std::fmt;
+use std::fmt::Formatter;
+use ultraviolet::Vec3;
 
 pub const EPSILON_SPHERE: f32 = 1e-4;
 
@@ -25,26 +25,25 @@ impl Sphere {
         let dop = ray.direction.dot(op);
         let destination = dop * dop - op.dot(op) + self.radius * self.radius;
 
-        if destination < 0.0 {
-            return false
+        return if destination < 0.0 {
+            false
         } else {
             let tmin = dop - destination.sqrt();
             if ray.tmin < tmin && tmin < ray.tmax {
                 ray.tmax = tmin;
-                return true
+                true
             } else {
                 let tmax = dop + destination.sqrt();
                 if ray.tmin < tmax && tmax < ray.tmax {
                     ray.tmax = tmax;
-                    return true
+                    true
                 } else {
-                    return false
+                    false
                 }
             }
-        }
+        };
     }
 }
-
 
 impl fmt::Display for MaterialType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -58,8 +57,18 @@ impl fmt::Display for MaterialType {
 
 impl fmt::Display for Sphere {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "(position: ({},{},{}), radius: {}, emission: {}, color: ({},{},{}), material: {})",
-               self.position.x, self.position.y, self.position.z,
-               self.radius, self.emission.x, self.color.x, self.color.y, self.color.z, self.material)
+        write!(
+            f,
+            "(position: ({},{},{}), radius: {}, emission: {}, color: ({},{},{}), material: {})",
+            self.position.x,
+            self.position.y,
+            self.position.z,
+            self.radius,
+            self.emission.x,
+            self.color.x,
+            self.color.y,
+            self.color.z,
+            self.material
+        )
     }
 }

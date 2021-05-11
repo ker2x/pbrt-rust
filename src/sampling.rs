@@ -1,5 +1,5 @@
-use ultraviolet::Vec3;
 use std::f32::consts::PI;
+use ultraviolet::Vec3;
 
 /*
 pub fn uniform_sample_on_hemisphere(u: f32, v:f32) -> Vec3 {
@@ -13,13 +13,13 @@ pub fn uniform_sample_on_hemisphere(u: f32, v:f32) -> Vec3 {
 }
  */
 
-pub fn cosine_weighted_sample_on_hemisphere(u:f32, v:f32) -> Vec3 {
-        //let costheta = (1f32 - u).sqrt();
-        //let sintheta = u.sqrt();
-        let phi = 2f32 * PI * v;
-        return Vec3 {
-            x: phi.cos() * u.sqrt(),
-            y: phi.sin() * u.sqrt(),
-            z: (1f32 - u).sqrt()
-        }
+pub fn cosine_weighted_sample_on_hemisphere(u: f32, v: f32) -> Vec3 {
+    //let costheta = (1f32 - u).sqrt();
+    //let sintheta = u.sqrt();
+    let phi = 2f32 * PI * v;
+    return Vec3 {
+        x: phi.cos() * u.sqrt(),
+        y: phi.sin() * u.sqrt(),
+        z: (1f32 - u).sqrt(),
+    };
 }
