@@ -5,7 +5,7 @@ mod sphere;
 mod utils;
 
 use chrono;
-use image::{ColorType, save_buffer_with_format, ImageFormat};
+use image::{save_buffer_with_format, ColorType, ImageFormat};
 use rand::Rng;
 use std::time::Instant;
 use ultraviolet::Vec3;
@@ -37,8 +37,8 @@ test : 1600x1200, 128SPP, 3/2000 Bounce : 58s/58s/64s/59s
 test : 1600x1200, 128SPP, 30/200 Bounce : 226s
  */
 
-const WIDTH: usize = 800*2;
-const HEIGHT: usize = 600*2;
+const WIDTH: usize = 800 * 2;
+const HEIGHT: usize = 600 * 2;
 const TEXTURE_SIZE: usize = WIDTH * HEIGHT;
 
 const SAMPLE: usize = 256; //the most important for quality
@@ -48,7 +48,7 @@ const MAX_BOUNCE: usize = 20; //that too, but minor compared to MIN
 
 const FOV: f32 = 0.5135;
 const REFRACTIVE_INDEX_OUT: f32 = 1.0;
-const REFRACTIVE_INDEX_IN: f32 = 1.52;  //regular glass
+const REFRACTIVE_INDEX_IN: f32 = 1.52; //regular glass
 
 fn main() {
     let now = Instant::now();
@@ -67,9 +67,10 @@ fn main() {
 
     let texture = texture.lock().unwrap();
 
-    //Save RGB image
+    //Create & Save RGB image
     let image = create_image_buffer(texture.to_vec());
     save_image_png("image.png", image);
+
     println!("Render time : {}s", now.elapsed().as_secs())
 }
 
@@ -234,34 +235,19 @@ fn radiance(ray: &mut Ray, sphere: &Vec<Sphere>) -> Vec3 {
     }
 }
 
-fn save_image_png(filename : &str, buf :Vec<u8>) {
-    /*
-Pixel is 8-bit luminance : L8,
-Pixel is 8-bit luminance with an alpha channel : La8,
-Pixel is 16-bit luminance : L16,
-Pixel is 16-bit luminance with an alpha channel : La16,
-
-Pixel contains 8-bit R, G and B channels : Rgb8,
-Pixel is 8-bit RGB with an alpha channel : Rgba8,
-
-Pixel is 16-bit RGB : Rgb16,
-Pixel is 16-bit RGBA : Rgba16,
-
-Pixel contains 8-bit B, G and R channels : Bgr8,
-Pixel is 8-bit BGR with an alpha channel : Bgra8,
- */
+fn save_image_png(filename: &str, buf: Vec<u8>) {
     save_buffer_with_format(
         filename,
         &buf,
         WIDTH as u32,
         HEIGHT as u32,
         ColorType::Rgb8,
-        ImageFormat::Png
+        ImageFormat::Png,
     )
-        .unwrap();
+    .unwrap();
 }
 
-fn create_image_buffer(tex :Vec<Vec3>) -> Vec<u8> {
+fn create_image_buffer(tex: Vec<Vec3>) -> Vec<u8> {
     let mut buffer = vec![0 as u8; WIDTH * HEIGHT * 3];
     for i in 0..tex.len() {
         buffer[i * 3 + 0] = fast_srgb8::f32_to_srgb8(tex[i].x);

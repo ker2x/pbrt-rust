@@ -15,7 +15,6 @@ pub fn ideal_specular_reflect(d: Vec3, n: Vec3) -> Vec3 {
 }
 
 pub fn ideal_specular_transmit(d: Vec3, n: Vec3, n_out: f32, n_in: f32, pr: &mut f32) -> Vec3 {
-
     let d_re = ideal_specular_reflect(d, n);
 
     let nl = if n.dot(d) < 0f32 { n } else { -n };
@@ -30,8 +29,8 @@ pub fn ideal_specular_transmit(d: Vec3, n: Vec3, n_out: f32, n_in: f32, pr: &mut
     let cos2phi = 1.0 - nn * nn * (1.0 - cos_theta * cos_theta);
     let d_tr = (nn * d - nl * (nn * cos_theta + cos2phi.sqrt())).normalized();
 
-    let c = 1.0 - (
-        if n.dot(d) < 0f32 {
+    let c = 1.0
+        - (if n.dot(d) < 0f32 {
             -cos_theta
         } else {
             d_tr.dot(n)
