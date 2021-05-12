@@ -5,7 +5,7 @@ mod sphere;
 mod utils;
 
 use chrono;
-use image;
+use image::{ColorType, save_buffer_with_format, ImageFormat};
 use rand::Rng;
 use std::time::Instant;
 use ultraviolet::Vec3;
@@ -18,7 +18,7 @@ use rayon::iter::ParallelIterator;
 use rayon::prelude::IntoParallelIterator;
 use std::sync::{Arc, Mutex};
 
-/*
+/* not using LTO
 test : 1600x1200, 16SPP, 3/20 Bounce    : 5s/5s
 test : 1600x1200, 32SPP, 3/20 Bounce    : 10s/11s
 test : 1600x1200, 64SPP, 3/20 Bounce    : 20s/22s
@@ -37,18 +37,18 @@ test : 1600x1200, 128SPP, 3/2000 Bounce : 58s/58s/64s/59s
 test : 1600x1200, 128SPP, 30/200 Bounce : 226s
  */
 
-const WIDTH: usize = 800;
-const HEIGHT: usize = 600;
+const WIDTH: usize = 800*2;
+const HEIGHT: usize = 600*2;
 const TEXTURE_SIZE: usize = WIDTH * HEIGHT;
 
-const SAMPLE: usize = 128; //the most important for quality
+const SAMPLE: usize = 256; //the most important for quality
 
 const MIN_BOUNCE: usize = 3; //can have a major impact on perf.
 const MAX_BOUNCE: usize = 20; //that too, but minor compared to MIN
 
 const FOV: f32 = 0.5135;
 const REFRACTIVE_INDEX_OUT: f32 = 1.0;
-const REFRACTIVE_INDEX_IN: f32 = 1.52;
+const REFRACTIVE_INDEX_IN: f32 = 1.52;  //regular glass
 
 fn main() {
     let now = Instant::now();
@@ -58,30 +58,23 @@ fn main() {
     let gaze = Vec3::new(0.0, -0.042612, -1.0).normalized();
     let cx = Vec3::new((FOV * (WIDTH as f32)) / (HEIGHT as f32), 0.0, 0.0);
     let cy = cx.cross(gaze).normalized() * FOV;
-
     let sphere_list = create_scene();
 
     let texture = Arc::new(Mutex::new(std::vec![Vec3::zero(); TEXTURE_SIZE]));
     (0..HEIGHT)
         .into_par_iter()
-        .for_each(|i| render(i, eye, gaze, cx, cy, Arc::clone(&texture), &sphere_list));
+        .for_each(|line| render(line, eye, gaze, cx, cy, Arc::clone(&texture), &sphere_list));
 
     let tex = texture.lock().unwrap();
 
-    let mut buffer = vec![0 as u8; WIDTH * HEIGHT * 3];
-    for i in 0..tex.len() {
-        buffer[i * 3 + 0] = fast_srgb8::f32_to_srgb8(tex[i].x);
-        buffer[i * 3 + 1] = fast_srgb8::f32_to_srgb8(tex[i].y);
-        buffer[i * 3 + 2] = fast_srgb8::f32_to_srgb8(tex[i].z);
-    }
-
-    save_image("image.png", buffer);
-
+    //Save RGB image
+    let buffer = create_image_buffer(tex.to_vec());
+    save_image_png("image.png", buffer);
     println!("Render time : {}s", now.elapsed().as_secs())
 }
 
 fn render(
-    column: usize,
+    line: usize,
     eye: Vec3,
     gaze: Vec3,
     cx: Vec3,
@@ -89,24 +82,20 @@ fn render(
     texture: Arc<Mutex<Vec<Vec3>>>,
     sph: &Vec<Sphere>,
 ) {
-    println!("{}", column);
+    println!("{}", line);
 
     let mut rng = rand::thread_rng();
-    let mut rngbuff = [0f32;SAMPLE];
-    //let mut rngbuff2 = [0f32;SAMPLE];
     let mut luminance: Vec3;
 
     for rowindex in 0..WIDTH {
-        let i = (HEIGHT - 1 - column) * WIDTH + rowindex;
+        let i = (HEIGHT - 1 - line) * WIDTH + rowindex;
         luminance = Vec3::zero();
-        rng.fill(&mut rngbuff);
-        //rng.fill(&mut rngbuff2);
 
         for _ in 0..SAMPLE {
             let dx = rng.gen::<f32>() - 0.5;
             let dy = rng.gen::<f32>() - 0.5;
             let d: Vec3 = cx * ((dx + rowindex as f32) / WIDTH as f32 - 0.5)
-                + cy * ((dy + column as f32) / HEIGHT as f32 - 0.5)
+                + cy * ((dy + line as f32) / HEIGHT as f32 - 0.5)
                 + gaze;
 
             luminance += radiance(
@@ -245,7 +234,7 @@ fn radiance(ray: &mut Ray, sphere: &Vec<Sphere>) -> Vec3 {
     }
 }
 
-fn save_image(filename : &str, buf :Vec<u8>) {
+fn save_image_png(filename : &str, buf :Vec<u8>) {
     /*
 Pixel is 8-bit luminance : L8,
 Pixel is 8-bit luminance with an alpha channel : La8,
@@ -261,14 +250,25 @@ Pixel is 16-bit RGBA : Rgba16,
 Pixel contains 8-bit B, G and R channels : Bgr8,
 Pixel is 8-bit BGR with an alpha channel : Bgra8,
  */
-    image::save_buffer(
+    save_buffer_with_format(
         filename,
         &buf,
         WIDTH as u32,
         HEIGHT as u32,
-        image::ColorType::Rgb8,
+        ColorType::Rgb8,
+        ImageFormat::Png
     )
         .unwrap();
+}
+
+fn create_image_buffer(tex :Vec<Vec3>) -> Vec<u8> {
+    let mut buffer = vec![0 as u8; WIDTH * HEIGHT * 3];
+    for i in 0..tex.len() {
+        buffer[i * 3 + 0] = fast_srgb8::f32_to_srgb8(tex[i].x);
+        buffer[i * 3 + 1] = fast_srgb8::f32_to_srgb8(tex[i].y);
+        buffer[i * 3 + 2] = fast_srgb8::f32_to_srgb8(tex[i].z);
+    }
+    return buffer;
 }
 
 fn create_scene() -> Vec<Sphere> {
