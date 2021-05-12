@@ -37,11 +37,11 @@ test : 1600x1200, 128SPP, 3/2000 Bounce : 58s/58s/64s/59s
 test : 1600x1200, 128SPP, 30/200 Bounce : 226s
  */
 
-const WIDTH: usize = 1600;
-const HEIGHT: usize = 1200;
+const WIDTH: usize = 800;
+const HEIGHT: usize = 600;
 const TEXTURE_SIZE: usize = WIDTH * HEIGHT;
 
-const SAMPLE: usize = 256; //the most important for quality
+const SAMPLE: usize = 128; //the most important for quality
 
 const MIN_BOUNCE: usize = 3; //can have a major impact on perf.
 const MAX_BOUNCE: usize = 20; //that too, but minor compared to MIN
@@ -59,18 +59,16 @@ fn main() {
     let cx = Vec3::new((FOV * (WIDTH as f32)) / (HEIGHT as f32), 0.0, 0.0);
     let cy = cx.cross(gaze).normalized() * FOV;
 
-    let texture = Arc::new(Mutex::new(std::vec![Vec3::zero(); TEXTURE_SIZE]));
-
     let sphere_list = create_scene();
 
+    let texture = Arc::new(Mutex::new(std::vec![Vec3::zero(); TEXTURE_SIZE]));
     (0..HEIGHT)
         .into_par_iter()
         .for_each(|i| render(i, eye, gaze, cx, cy, Arc::clone(&texture), &sphere_list));
 
-    let mut buffer = vec![0 as u8; WIDTH * HEIGHT * 3];
-
     let tex = texture.lock().unwrap();
 
+    let mut buffer = vec![0 as u8; WIDTH * HEIGHT * 3];
     for i in 0..tex.len() {
         buffer[i * 3 + 0] = fast_srgb8::f32_to_srgb8(tex[i].x);
         buffer[i * 3 + 1] = fast_srgb8::f32_to_srgb8(tex[i].y);
