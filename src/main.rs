@@ -65,11 +65,11 @@ fn main() {
         .into_par_iter()
         .for_each(|line| render(line, eye, gaze, cx, cy, Arc::clone(&texture), &sphere_list));
 
-    let tex = texture.lock().unwrap();
+    let texture = texture.lock().unwrap();
 
     //Save RGB image
-    let buffer = create_image_buffer(tex.to_vec());
-    save_image_png("image.png", buffer);
+    let image = create_image_buffer(texture.to_vec());
+    save_image_png("image.png", image);
     println!("Render time : {}s", now.elapsed().as_secs())
 }
 
